@@ -1,6 +1,5 @@
 # rcode
 #fusion chart R code
-
 fusionPlot(data, x, y, type = "column2d", numberSuffix = NULL)
 
 library(fusionchartsR)
@@ -69,202 +68,184 @@ sankeyNetwork(Links = links, Nodes = nodes,
               Source = "source", Target = "target",
               Value = "value", NodeID = "name",
               fontSize= 12, nodeWidth = 30)
+              
+#install.packages("remotes")
+#remotes::install_github("davidsjoberg/ggsankey")
 
-library(plotly)
+library(ggsankey)
 
-fig <- plot_ly(
-  type = "sankey",
-  orientation = "h",
-  
-  node = list(
-    label = c("A1", "A2", "B1", "B2", "C1", "C2"),
-    color = c("blue", "blue", "blue", "blue", "blue", "blue"),
-    pad = 15,
-    thickness = 20,
-    line = list(
-      color = "black",
-      width = 0.5
-    )
-  ),
-  
-  link = list(
-    source = c(0,1,0,2,3,3),
-    target = c(2,3,3,4,4,5),
-    value =  c(8,4,2,8,4,2)
-  )
+library(ggplot2)
+library(dplyr)
+
+
+#How to show the data labels with the values (count) of each node.
+#Create data which can be used for Sankey
+set.seed(111)
+
+# Simple
+
+t1 <- sample(x = c("Hosp A", "Hosp B", "Hosp C","Hosp D") , size = 100, replace=TRUE)
+t2 <- sample(x = c("Male", "Female")   , size = 100, replace=TRUE)
+t3 <- sample(x = c("Survived", "Died") , size = 100, replace=TRUE)
+
+d <- data.frame(cbind(t1,t2,t3))
+names(d) <- c('Hospital', 'Gender',  'Outcome')
+
+head(d)
+
+# Step 1
+df <- d %>%
+  make_long(Hospital, Gender, Outcome)
+df
+
+# Chart Sankey 1
+pl <- ggplot(df, aes(x = x
+                     , next_x = next_x
+                     , node = node
+                     , next_node = next_node
+                     , fill = factor(node)
+                     , label = node)
+             )
+pl <- pl +geom_sankey(flow.alpha = 0.5
+                      , node.color = "black"
+                      ,show.legend = FALSE)
+pl <- pl +geom_sankey_label(size = 3, color = "black", fill= "white", hjust = -0.5)
+pl <- pl +  theme_bw()
+pl <- pl + theme(legend.position = "none")
+pl <- pl +  theme(axis.title = element_blank()
+                  , axis.text.y = element_blank()
+                  , axis.ticks = element_blank()  
+                  , panel.grid = element_blank())
+pl <- pl + scale_fill_viridis_d(option = "inferno")
+pl <- pl + labs(title = "Sankey diagram using ggplot")
+pl <- pl + labs(subtitle = "using  David Sjoberg's ggsankey package")
+pl <- pl + labs(caption = "@techanswers88")
+pl <- pl + labs(fill = 'Nodes')
+pl
+
+#Create data which can be used for Sankey
+set.seed(111)
+
+# Simple
+
+t1 <- sample(x = c("Hosp A", "Hosp B", "Hosp C","Hosp D") , size = 100, replace=TRUE)
+t2 <- sample(x = c("Male", "Female")   , size = 100, replace=TRUE)
+t3 <- sample(x = c("Survived", "Died") , size = 100, replace=TRUE)
+
+d <- data.frame(cbind(t1,t2,t3))
+names(d) <- c('Hospital', 'Gender',  'Outcome')
+
+
+# Step 1
+df <- d %>%
+  make_long(Hospital, Gender, Outcome)
+
+# Step 2
+dagg <- df%>%
+  dplyr::group_by(node)%>%
+  tally()
+
+
+# Step 3
+df2 <- merge(df, dagg, by.x = 'node', by.y = 'node', all.x = TRUE)
+
+# Chart 2
+pl <- ggplot(df2, aes(x = x
+                      , next_x = next_x
+                      , node = node
+                      , next_node = next_node
+                      , fill = factor(node)
+                      
+                      , label = paste0(node," n=", n)
 )
-fig <- fig %>% layout(
-  title = "Basic Sankey Diagram",
-  font = list(
-    size = 10
-  )
-)
-
-library(plotly)
-
-fig <- plot_ly(
-  type = "sankey",
-  domain = list(
-    x =  c(0,1),
-    y =  c(0,1)
-  ),
-  orientation = "h",
-  valueformat = ".0f",
-  valuesuffix = "TWh"
-)
-fig <- fig %>% layout(
-  title = "Energy forecast for 2050, UK - Department of Energy & Climate Change",
-  font = list(
-    size = 10
-  ),
-  xaxis = list(showgrid = F, zeroline = F),
-  yaxis = list(showgrid = F, zeroline = F)
-)
-fig
-
-library(plotly)
-library(rjson)
-
-json_file <- "https://raw.githubusercontent.com/plotly/plotly.js/master/test/image/mocks/sankey_energy.json"
-json_data <- fromJSON(paste(readLines(json_file), collapse=""))
-
-fig <- plot_ly(
-  type = "sankey",
-  domain = list(
-    x =  c(0,1),
-    y =  c(0,1)
-  ),
-  orientation = "h",
-  valueformat = ".0f",
-  valuesuffix = "TWh",
-  
-  node = list(
-    label = json_data$data[[1]]$node$label,
-    color = json_data$data[[1]]$node$color,
-    pad = 15,
-    thickness = 15,
-    line = list(
-      color = "black",
-      width = 0.5
-    )
-  )
 ) 
-fig <- fig %>% layout(
-  title = "Energy forecast for 2050, UK - Department of Energy & Climate Change",
-  font = list(
-    size = 10
-  ),
-  xaxis = list(showgrid = F, zeroline = F),
-  yaxis = list(showgrid = F, zeroline = F)
+pl <- pl +geom_sankey(flow.alpha = 0.5,  color = "gray40", show.legend = TRUE)
+pl <- pl +geom_sankey_label(size = 3, color = "white", fill= "gray40", hjust = -0.2)
+
+pl <- pl +  theme_bw()
+pl <- pl + theme(legend.position = "none")
+pl <- pl +  theme(axis.title = element_blank()
+                  , axis.text.y = element_blank()
+                  , axis.ticks = element_blank()  
+                  , panel.grid = element_blank())
+pl <- pl + scale_fill_viridis_d(option = "inferno")
+pl <- pl + labs(title = "Sankey diagram using ggplot")
+pl <- pl + labs(subtitle = "using  David Sjoberg's ggsankey package")
+pl <- pl + labs(caption = "@techanswers88")
+pl <- pl + labs(fill = 'Nodes')
+
+
+pl
+
+#Sankey with bit more complicated data
+
+t1 <- sample(paste("Hosp", letters), size = 100, replace=TRUE)
+t2 <- sample(x = c("Male", "Female")   , size = 100, replace=TRUE)
+t3 <- floor(runif(100, min = 0, max = 110))
+t4 <- sample(x = c("Survived", "Died") , size = 100, replace=TRUE)
+t5  <- sample(paste("Facility ", letters), size = 100, replace=TRUE)
+
+d <- data.frame(cbind(t1,t2,t3,t4, t5))
+names(d) <- c('Hospital', 'Gender', 'AgeYears', 'Outcome', 'Dischargeto')
+
+d$AgeYears <- as.integer(d$AgeYears)
+d$AgeGroup <- cut(d$AgeYears, 
+                  breaks = c(-Inf
+                             ,5 ,10 ,15,20,25,30,35,40,45,50,55,60 ,65,70,75,80,85
+                             , Inf), 
+                  
+                  labels = c("0-4 years"
+                             ,"5-9 years","10-14 years","15-19 years","20-24 years"
+                             ,"25-29 years","30-34 years","35-39 years","40-44 years"
+                             ,"45-49 years","50-54 years","55-59 years","60-64 years"
+                             ,"65-69 years","70-74 years","75-79 years","80-84 years"
+                             ,"85+ years"),
+                  right = FALSE)
+
+
+
+
+# Step 1
+df <- d %>%
+  make_long(Hospital, Gender,AgeGroup, Outcome,Dischargeto)
+
+# Step 2
+dagg <- df%>%
+  dplyr::group_by(node)%>%
+  tally()
+
+
+# Step 3
+df2 <- merge(df, dagg, by.x = 'node', by.y = 'node', all.x = TRUE)
+
+
+# Chart
+pl <- ggplot(df2, aes(x = x
+                      , next_x = next_x
+                      , node = node
+                      , next_node = next_node
+                      , fill = factor(node)
+                      , label = paste0(node," n=", n)
 )
-
-library(plotly)
-library(rjson)
-
-json_file <- "https://raw.githubusercontent.com/plotly/plotly.js/master/test/image/mocks/sankey_energy.json"
-json_data <- fromJSON(paste(readLines(json_file), collapse=""))
-
-fig <- plot_ly(
-  type = "sankey",
-  domain = list(
-    x =  c(0,1),
-    y =  c(0,1)
-  ),
-  orientation = "h",
-  valueformat = ".0f",
-  valuesuffix = "TWh",
-  
-  node = list(
-    label = json_data$data[[1]]$node$label,
-    color = json_data$data[[1]]$node$color,
-    pad = 15,
-    thickness = 15,
-    line = list(
-      color = "black",
-      width = 0.5
-    )
-  ),
-  
-  link = list(
-    source = json_data$data[[1]]$link$source,
-    target = json_data$data[[1]]$link$target,
-    value =  json_data$data[[1]]$link$value,
-    label =  json_data$data[[1]]$link$label
-  )
 ) 
-fig <- fig %>% layout(
-  title = "Energy forecast for 2050<br>Source: Department of Energy & Climate Change, Tom Counsell via <a href='https://bost.ocks.org/mike/sankey/'>Mike Bostock</a>",
-  font = list(
-    size = 10
-  ),
-  xaxis = list(showgrid = F, zeroline = F),
-  yaxis = list(showgrid = F, zeroline = F)
-)
+pl <- pl +geom_sankey(flow.alpha = 0.5, node.color = "black",show.legend = TRUE)
+pl <- pl +geom_sankey_text(size = 2, color = "blue", hjust = -0.5)
+#pl <- pl +geom_sankey_label(size = 2, color = "black", fill= "white", hjust = -0.1)
+pl <- pl +  theme_bw()
+pl <- pl + theme_sankey(base_size = 16) 
+pl <- pl + theme(legend.position = "none")
+pl <- pl + labs(title = "Sankey diagram using ggplot")
+pl <- pl + labs(subtitle = "using David Sjoberg's ggsankey package")
+pl <- pl + labs(caption = "@techanswers88")
+pl <- pl + labs(fill = 'Nodes')
 
-fig
+pl <- pl +  theme(axis.title = element_blank()
+                  , axis.text.y = element_blank()
+                  , axis.ticks = element_blank()  
+                  , panel.grid = element_blank())
 
-library(plotly)
-library(rjson)
-
-json_file <- "https://raw.githubusercontent.com/plotly/plotly.js/master/test/image/mocks/sankey_energy_dark.json"
-json_data <- fromJSON(paste(readLines(json_file), collapse=""))
-
-fig <- plot_ly(
-  type = "sankey",
-  domain = list(
-    x =  c(0,1),
-    y =  c(0,1)
-  ),
-  orientation = "h",
-  valueformat = ".0f",
-  valuesuffix = "TWh",
-  
-  node = list(
-    label = json_data$data[[1]]$node$label,
-    color = json_data$data[[1]]$node$color,
-    pad = 15,
-    thickness = 15,
-    line = list(
-      color = "black",
-      width = 0.5
-    )
-  ),
-  
-  link = list(
-    source = json_data$data[[1]]$link$source,
-    target = json_data$data[[1]]$link$target,
-    value =  json_data$data[[1]]$link$value,
-    label =  json_data$data[[1]]$link$label
-  )
-)
-fig <- fig %>% layout(
-  title = "Energy forecast for 2050<br>Source: Department of Energy & Climate Change, Tom Counsell via <a href='https://bost.ocks.org/mike/sankey/'>Mike Bostock</a>",
-  font = list(
-    size = 10,
-    color = 'white'
-  ),
-  xaxis = list(showgrid = F, zeroline = F, showticklabels = F),
-  yaxis = list(showgrid = F, zeroline = F, showticklabels = F),
-  plot_bgcolor = 'black',
-  paper_bgcolor = 'black'
-)
-
-library(plotly)
-fig <- plot_ly(
-  type = "sankey",
-  arrangement = "snap",
-  node = list(
-    label = c("A", "B", "C", "D", "E", "F"),
-    x = c(0.2, 0.1, 0.5, 0.7, 0.3, 0.5),
-    y = c(0.7, 0.5, 0.2, 0.4, 0.2, 0.3),
-    pad = 10), # 10 Pixel
-  link = list(
-    source = c(0, 0, 1, 2, 5, 4, 3, 5),
-    target = c(5, 3, 4, 3, 0, 2, 2, 3),
-    value = c(1, 2, 1, 1, 1, 1, 1, 2)))
-fig <- fig %>% layout(title = "Sankey with manually positioned node")
-
-fig
+pl <- pl + scale_fill_viridis_d(option = "inferno")
+pl
 
 
 
